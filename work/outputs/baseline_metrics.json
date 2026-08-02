@@ -1,0 +1,10 @@
+{
+  "total_rows": 176738,
+  "review_count": 7521,
+  "monitor_count": 169217,
+  "tier_p75_ctr_baseline": {
+    "page_1": 0.2909,
+    "striking": 0.2463,
+    "top_3": 0.3509
+  }
+}
