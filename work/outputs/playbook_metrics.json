@@ -1,0 +1,12 @@
+{
+  "snapshot_month": "2026-03",
+  "total_content": 176738,
+  "review_pct": 0.5465151806629022,
+  "urgent_pct": 0.13665425658319094,
+  "tier_p75_ctr_baselines": {
+    "page_1": 0.2909,
+    "striking": 0.2463,
+    "top_3": 0.3509
+  },
+  "median_gsc_coverage_pct": 0.0801
+}

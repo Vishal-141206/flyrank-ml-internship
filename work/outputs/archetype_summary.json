@@ -1,0 +1,22 @@
+{
+  "LOW_PRIORITY_WATCH": {
+    "count": 24145,
+    "avg_score": 0.299,
+    "avg_impressions": 787.343
+  },
+  "STABLE": {
+    "count": 80148,
+    "avg_score": 0.0,
+    "avg_impressions": 1893.62
+  },
+  "STANDARD_CTR_FIX": {
+    "count": 48293,
+    "avg_score": 0.97,
+    "avg_impressions": 986.055
+  },
+  "URGENT_CTR_FIX": {
+    "count": 24152,
+    "avg_score": 1.809,
+    "avg_impressions": 2577.748
+  }
+}
