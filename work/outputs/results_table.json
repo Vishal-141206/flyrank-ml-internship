@@ -1,0 +1,22 @@
+{
+  "Logistic Regression":{
+    "AUC":0.558,
+    "Precision@20":0.25,
+    "Precision@100":0.15
+  },
+  "Decision Tree":{
+    "AUC":0.66,
+    "Precision@20":0.15,
+    "Precision@100":0.73
+  },
+  "Random Forest":{
+    "AUC":0.651,
+    "Precision@20":0.35,
+    "Precision@100":0.33
+  },
+  "Rule Baseline":{
+    "AUC":0.601,
+    "Precision@20":0.4,
+    "Precision@100":0.43
+  }
+}
