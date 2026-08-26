@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which Content Should You Fix First? — A Validated Prioritization System from 79M Rows of Search Data</title>
+<meta name="description" content="A hand-built scoring rule vs. trained ML models on real search-performance data — validated, leakage-audited, and honestly reported.">
+<style>
+  :root {
+    --text: #1a202c;
+    --muted: #64748b;
+    --accent: #c53030;
+    --accent-soft: #fef2f2;
+    --border: #e2e8f0;
+    --bg-soft: #f8fafc;
+    --success: #2f855a;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--text);
+    line-height: 1.7;
+    margin: 0;
+    background: #fff;
+    font-size: 17px;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    color: #fff;
+    padding: 4rem 1.25rem 3rem;
+    text-align: center;
+  }
+  .hero .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.78rem;
+    color: #cbd5e0;
+    margin-bottom: 1rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.7rem, 4vw, 2.5rem);
+    line-height: 1.25;
+    max-width: 820px;
+    margin: 0 auto 1rem;
+  }
+  .hero .subtitle {
+    color: #cbd5e0;
+    font-size: 1.05rem;
+    max-width: 620px;
+    margin: 0 auto 1.8rem;
+  }
+  .hero .meta {
+    color: #a0aec0;
+    font-size: 0.9rem;
+  }
+  .hero .meta a { color: #fbd5d5; }
+  .stat-strip {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2.2rem;
+    margin-top: 2.2rem;
+  }
+  .stat { text-align: center; }
+  .stat .num { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  .stat .label { font-size: 0.78rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ---------- LAYOUT ---------- */
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 3rem;
+  }
+  @media (max-width: 860px) {
+    .wrap { grid-template-columns: 1fr; }
+    nav.toc { display: none; }
+  }
+  nav.toc {
+    position: sticky;
+    top: 2rem;
+    align-self: start;
+    padding-top: 3rem;
+    font-size: 0.88rem;
+  }
+  nav.toc a {
+    display: block;
+    padding: 0.35rem 0;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid var(--border);
+    padding-left: 0.8rem;
+  }
+  nav.toc a:hover { color: var(--accent); border-left-color: var(--accent); }
+
+  main { padding: 3rem 0 5rem; max-width: 760px; }
+
+  h2 {
+    font-size: 1.4rem;
+    margin-top: 3.2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border);
+    scroll-margin-top: 1.5rem;
+  }
+  h3 { font-size: 1.08rem; margin-top: 1.8rem; }
+  p { margin: 0.9rem 0; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: 0.45rem 0; }
+
+  /* ---------- ABSTRACT CARD ---------- */
+  .abstract-card {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.5rem 1.7rem;
+    margin: -1.5rem 0 2.5rem;
+    font-size: 0.98rem;
+  }
+  .abstract-card .tag {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+  }
+
+  code {
+    background: var(--bg-soft);
+    padding: 0.15em 0.45em;
+    border-radius: 4px;
+    font-size: 0.88em;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: #1a202c;
+    color: #e2e8f0;
+    padding: 1.1rem 1.3rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+  }
+  pre code { background: none; padding: 0; border: none; color: inherit; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.4rem 0;
+    font-size: 0.92rem;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td { text-align: left; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); }
+  th { background: var(--bg-soft); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  tr.highlight td { background: var(--accent-soft); font-weight: 600; }
+
+  figure { margin: 2rem 0; }
+  figure img {
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: block;
+  }
+  figcaption {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 0.7rem;
+    padding: 0 0.2rem;
+  }
+
+  .callout {
+    background: #fffbeb;
+    border: 1px solid #fbd38d;
+    border-radius: 8px;
+    padding: 1.1rem 1.3rem;
+    font-size: 0.94rem;
+    margin: 1.4rem 0;
+  }
+  .callout strong { color: #9c4221; }
+
+  .finding-box {
+    background: #f0fff4;
+    border: 1px solid #9ae6b4;
+    border-left: 4px solid var(--success);
+    border-radius: 8px;
+    padding: 1.1rem 1.3rem;
+    margin: 1.4rem 0;
+    font-size: 0.94rem;
+  }
+
+  .badge-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.8rem 0 1.4rem; }
+  .badge {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  footer {
+    background: var(--bg-soft);
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 1.25rem;
+    margin-top: 2rem;
+  }
+  footer .footer-inner { max-width: 760px; margin: 0 auto; }
+  footer h2 { border: none; margin-top: 0; font-size: 1.05rem; }
+  footer p { color: var(--muted); font-size: 0.92rem; }
+  a { color: var(--accent); }
+
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow">FlyRank ML Internship &middot; Capstone Research Paper</div>
+  <h1>Which Content Should You Fix First?</h1>
+  <p class="subtitle">A validated, human-reviewed prioritization system built on 79 million rows of real search-performance data — and an honest look at when a simple rule beats machine learning.</p>
+  <p class="meta">By Vishal &middot; <a href="https://github.com/Vishal-141206/flyrank-ml-internship">Repo &amp; notebooks ↗</a></p>
+  <div class="stat-strip">
+    <div class="stat"><div class="num">176,738</div><div class="label">Pages scored</div></div>
+    <div class="stat"><div class="num">79M</div><div class="label">Warehouse rows</div></div>
+    <div class="stat"><div class="num">3 vs 1</div><div class="label">Models vs rule</div></div>
+    <div class="stat"><div class="num">0.40</div><div class="label">Best Precision@20</div></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="toc">
+    <a href="#intro">Introduction</a>
+    <a href="#data">Data</a>
+    <a href="#methodology">Methodology</a>
+    <a href="#results">Results</a>
+    <a href="#limitations">Limitations</a>
+    <a href="#recommendations">Recommendations</a>
+    <a href="#repro">Reproducibility</a>
+    <a href="#credit">Data Credit</a>
+  </nav>
+
+  <main>
+    <div class="abstract-card">
+      <div class="tag">Abstract</div>
+      <p style="margin:0;">
+      Which pages in a large content portfolio deserve an editor's attention first? Using
+      FlyRank's pseudonymized warehouse (176,738 content items with real March 2026 search
+      data, drawn from a 79M-row release), we built and validated a content-prioritization
+      system for a refresh/opportunity-scoring use case. A transparent rule — ranking content
+      by CTR gap relative to its own position-tier baseline, weighted by traffic volume — was
+      compared against trained classifiers (Logistic Regression, Decision Tree, Random Forest)
+      predicting real, observed April CTR improvement under a client-grouped validation split.
+      The rule-based baseline proved competitive with or better than the trained models at the
+      metric that matters most for a real editor queue (precision@20); a leakage and validation
+      audit confirmed this comparison was fair and free of future-window or label-derived
+      contamination. The output is a ranked, human-reviewed action playbook — not an automated
+      system — intended as decision-support for content teams triaging search-visibility
+      opportunities.
+      </p>
+    </div>
+
+    <h2 id="intro">Introduction &amp; Problem</h2>
+    <p>
+    Out of a large content portfolio, which pages should a content editor review first, this
+    week, given limited time? Not "is this page declining, yes/no" in isolation — an editor
+    works a sorted queue, not a set of binary flags.
+    </p>
+    <p>
+    The decision this supports: an editor opens a ranked list, works from the top, and for each
+    flagged page verifies whether a fixable problem exists before spending time on it. A wrong
+    call has an <strong>asymmetric cost</strong> — a false positive wastes scarce editor time,
+    while a false negative lets a real underperformer keep losing recoverable clicks, quieter
+    but compounding. This asymmetry is why <strong>precision@20</strong> is the primary metric
+    throughout this work, not overall accuracy.
+    </p>
+    <p>
+    A plain rule alone does not hold up against this portfolio's own data. Position tier alone
+    does not cleanly separate underperformers, editorial-history data in this warehouse behaves
+    inconsistently with real edit activity, and CTR's relationship with position and traffic
+    volume is real but weak and unevenly distributed. This is exactly the kind of tangled,
+    multi-signal pattern that benefits from a scored, validated ranking approach — tested
+    against a real, observed outcome — rather than a single hand-written rule taken on faith.
+    </p>
+
+    <h2 id="data">Data</h2>
+    <div class="badge-row">
+      <span class="badge">78.8M rows &middot; daily fact table</span>
+      <span class="badge">519.6K content items</span>
+      <span class="badge">March + April 2026</span>
+      <span class="badge">Pseudonymized IDs only</span>
+    </div>
+    <p>
+    <strong>Source:</strong> FlyRank's pseudonymized ML internship warehouse (gated release
+    <code>v20260703</code>), specifically <code>fact_content_daily_performance</code>
+    (78,835,655 rows, report-date × client × content grain) and <code>dim_content</code>
+    (519,606 rows). This work uses two months from that release: <strong>March 2026</strong>
+    (the feature window) and <strong>April 2026</strong> (the outcome window for a real,
+    observed target).
+    </p>
+    <p><strong>Columns used:</strong> Google Search Console–derived metrics (impressions,
+    clicks, average position) aggregated per content item per month, plus static content
+    metadata (content type, search volume, competition, primary intent, word count).</p>
+    <p><strong>Columns deliberately excluded, and why:</strong></p>
+    <ul>
+      <li>Any pre-computed trend/direction column — using it as a feature would let a model
+        learn a rule instead of a real pattern.</li>
+      <li>GA4/session/AI-referral columns — under 5% real coverage in this slice; a feature
+        here would mostly encode tracking availability, not engagement.</li>
+      <li>Publish/delete flags and optimization-scheduling dates — these encode a prior human
+        or product decision, not an observed performance signal.</li>
+      <li>A content "last updated" date — found to behave like a synthetic/batch-generated
+        field rather than real editorial history, excluded from all staleness-related
+        reasoning.</li>
+      <li>Rows carrying a sentinel "no data" position value despite real impressions (4.5% of
+        position-available data) — excluded from position-weighted calculations.</li>
+    </ul>
+    <div class="callout">
+      <strong>Public-safety note:</strong> no client-identifying content appears anywhere in
+      this work. All identifiers used are the warehouse's own pseudonymous hashes, used only
+      for grouping and joining, never as model features.
+    </div>
+
+    <h2 id="methodology">Methodology</h2>
+    <h3>Baseline — a transparent, hand-built rule</h3>
+    <p>For content in a confirmed-visible position tier, the baseline scores:</p>
+    <pre><code>score = (tier's 75th-percentile CTR − page's CTR) × log(1 + impressions)</code></pre>
+    <p>
+    Content is compared against its own tier's 75th-percentile CTR — not a single global
+    threshold and not the tier median, since median CTR is 0.0 in every tier except the very
+    top (most pages get zero clicks regardless of position). Traffic volume is log-dampened so
+    a small number of extreme-impression pages don't dominate the ranking.
+    </p>
+    <h3>Model</h3>
+    <p>
+    Three classifiers were compared, cheapest first — Logistic Regression, Decision Tree,
+    Random Forest — each producing a continuous score (not a binary flag) so results stay
+    comparable to the baseline's ranking. The target, <code>target_ctr_improved</code>, is 1 if
+    a content item's real April CTR exceeded its real March CTR, else 0 — an outcome observed
+    in a genuinely later time window, not derived from any pre-computed rule.
+    </p>
+    <h3>Validation design</h3>
+    <p>
+    All splits are grouped by client, not by row. A direct before/after test found a naive
+    random 80/20 split placed 42 of 46 clients in both train and test simultaneously, inflating
+    precision@20 from an honest 0.55 to an overstated 0.75 — purely from the model partially
+    memorizing client-specific baseline behavior. All reported results use the grouped split,
+    with zero client overlap.
+    </p>
+    <h3>Leakage checks</h3>
+    <p>
+    Three attacks were run against the final feature set: a future-window column was
+    deliberately added and confirmed to inflate the score when present, then removed; every
+    feature was correlated against the real target with none exceeding ±0.20; and both source
+    tables were scanned for product/decision-flag columns, all confirmed absent from the
+    trained feature set.
+    </p>
+
+    <h2 id="results">Results</h2>
+    <figure>
+      <img src="paper-figures/ctr_by_position_tier.png" alt="Bar chart showing mean CTR declining monotonically from top_3 to deep position tiers">
+      <figcaption>Mean CTR declines from 1.00% (top_3) to 0.09% (deep) — a real, monotonic signal, though the typical page below top_3 still gets zero clicks.</figcaption>
+    </figure>
+    <figure>
+      <img src="paper-figures/model_vs_baseline_p20.png" alt="Bar chart comparing precision at 20 across three trained models and the rule baseline">
+      <figcaption>The rule-based baseline leads every trained model on precision@20 — the metric that matters most for a top-down editor queue.</figcaption>
+    </figure>
+    <table>
+      <tr><th>Method</th><th>AUC</th><th>Precision@20</th><th>Precision@100</th></tr>
+      <tr><td>Logistic Regression</td><td>0.558</td><td>0.25</td><td>0.15</td></tr>
+      <tr><td>Decision Tree</td><td>0.660</td><td>0.15</td><td>0.73</td></tr>
+      <tr><td>Random Forest</td><td>0.651</td><td>0.35</td><td>0.33</td></tr>
+      <tr class="highlight"><td>Rule Baseline</td><td>0.601</td><td>0.40</td><td>0.43</td></tr>
+      <tr><td>Base rate</td><td>—</td><td>~0.20</td><td>~0.20</td></tr>
+    </table>
+    <p>
+    No trained model reliably beat the rule-based baseline at precision@20. Decision Tree's
+    headline precision@100 (0.73) looked strong, but its own precision@20 (0.15) was the
+    weakest number in the table — a concrete illustration of why reporting only one cutoff
+    would have hidden a real weakness exactly where an editor looks first.
+    </p>
+    <p>
+    A follow-up test with an extended feature set showed a Decision Tree reaching precision@20
+    of 0.95 on a single split — but this did not survive 5-fold grouped cross-validation (mean
+    0.570, std 0.248, fold range 0.20–0.90). With roughly 9 clients per fold, individual client
+    behavior swings results substantially; this is reported as a directional, low-confidence
+    signal, not a confirmed improvement.
+    </p>
+
+    <h3>Interpretation</h3>
+    <p>
+    The Decision Tree's feature importances were dominated by total impressions (71.4%), with
+    current CTR (10.6%) and active days (9.1%) a distant second and third — extended content
+    metadata (search volume, competition, word count) each contributed under 3%. In plain
+    terms: whether a page's CTR improves is mostly predictable from how much traffic it already
+    receives, weakly from its current CTR, and barely at all from static content attributes in
+    this dataset.
+    </p>
+    <div class="finding-box">
+      <strong>Two negative results, reported deliberately, not omitted:</strong> position
+      tier's relationship with CTR is real at the aggregate level but not a "typical page"
+      effect — median CTR is 0.0 in every tier except the very top, so the mean gradient is
+      driven by a minority of strong performers. And the refresh/staleness signal could not be
+      tested as planned, because the warehouse's content-update timestamp did not behave like
+      real editorial history — a limitation of this data release for this question, not
+      evidence that refresh timing is unimportant in practice.
+    </div>
+
+    <figure>
+      <img src="paper-figures/archetype_distribution.png" alt="Bar chart showing content distributed across four action archetypes">
+      <figcaption>176,738 pages sorted into four action archetypes; 24,152 (13.7%) are flagged as the highest-priority tier.</figcaption>
+    </figure>
+
+    <h2 id="limitations">Limitations &amp; Honest Framing</h2>
+    <ul>
+      <li><strong>Single-month training window.</strong> Both the rule and the models are built
+        from one month, validated against the next — a two-month slice of a ~17-month
+        warehouse. Longer-term seasonality and algorithm shifts are not captured.</li>
+      <li><strong>Small usable client pool.</strong> Only 46 of 104 total clients have real
+        data in both months; cross-validation used roughly 9 clients per fold, producing real,
+        substantial variance that limits confidence in any single result.</li>
+      <li><strong>Uneven per-client data coverage.</strong> Median per-client coverage was just
+        8% of days in the feature month, ranging from 0% to 92% — a structural property of the
+        underlying data collection.</li>
+      <li><strong>Rule vs. model is not a settled question.</strong> The rule was competitive
+        with or ahead of every model tested here — this reflects the specific feature set and
+        time window available, not a general claim that rules beat models for this class of
+        problem.</li>
+      <li><strong>Not causal, and not a Google-algorithm model.</strong> Every score reflects
+        an association between earlier-observed features and a later-observed outcome. No
+        title/meta rewrite is guaranteed to produce the score's implied improvement — a
+        controlled experiment would be needed to make any causal claim, and none was run here.</li>
+    </ul>
+
+    <h2 id="recommendations">Ranked Recommendations</h2>
+    <p>All content is sorted into four archetypes by the rule-based score — not the trained model, per the Results above:</p>
+    <table>
+      <tr><th>Archetype</th><th>Count</th><th>Avg. score</th><th>Action</th></tr>
+      <tr><td>Urgent CTR fix</td><td>24,152</td><td>1.81</td><td>Review this week</td></tr>
+      <tr><td>Standard CTR fix</td><td>48,293</td><td>0.97</td><td>Review this sprint</td></tr>
+      <tr><td>Low priority watch</td><td>24,145</td><td>0.30</td><td>Note, don't prioritize yet</td></tr>
+      <tr><td>Stable</td><td>80,148</td><td>0.00</td><td>No action needed</td></tr>
+    </table>
+    <p><strong>How an editor uses this tomorrow:</strong> open the top archetype, work down the
+    list, verify each page's CTR gap directly in Search Console before touching anything, then
+    rewrite title/meta only after confirming it's a fixable snippet problem rather than
+    expected searcher behavior for that query.</p>
+    <div class="callout">
+      <strong>What should never be automated:</strong> title/meta changes triggered by score
+      alone; bulk actions across a whole archetype without individual review; reporting these
+      scores to a client as a guaranteed traffic outcome; any action on content with no valid
+      position reading. A specific, quantified caution: 13 of 24,152 top-priority items combine
+      a near-#1 position with literally 0% CTR at high volume — more likely a
+      tracking/attribution artifact than a real content problem, worth checking first.
+    </div>
+
+    <h2 id="repro">Reproducibility</h2>
+    <p>
+    Full pipeline, notebooks, and code:
+    <a href="https://github.com/Vishal-141206/flyrank-ml-internship">github.com/Vishal-141206/flyrank-ml-internship</a>
+    </p>
+    <p>Notebooks run in this order under <code>work/notebooks/</code>: research framing → task
+    framing → data contract → feature/leakage audit → signal audit → baseline score → model
+    comparison → validation audit → action playbook → this capstone. Each notebook re-queries
+    the warehouse fresh via DuckDB — no local data files are committed. All model training and
+    splitting uses a fixed random seed (42) throughout.</p>
+  </main>
+</div>
+
+<footer id="credit">
+  <div class="footer-inner">
+    <h2>Acknowledgments &amp; Data Credit</h2>
+    <p>Built on the FlyRank ML Internship dataset. Data access, warehouse structure, and the
+    underlying research problem were provided by <a href="https://flyrank.ai">FlyRank</a>.</p>
+  </div>
+</footer>
+
+</body>
+</html>
